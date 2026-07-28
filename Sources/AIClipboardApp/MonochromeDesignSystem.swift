@@ -54,10 +54,13 @@ struct MonoCard<Content: View>: View {
                 RoundedRectangle(cornerRadius: Mono.corner, style: .continuous)
                     .stroke(Mono.subtleLine, lineWidth: 1)
             }
+            .motionHover()
     }
 }
 
 struct MonoPrimaryButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 13, weight: .semibold))
@@ -66,10 +69,17 @@ struct MonoPrimaryButtonStyle: ButtonStyle {
             .frame(height: 38)
             .background(Mono.inverse.opacity(configuration.isPressed ? 0.78 : 1))
             .clipShape(RoundedRectangle(cornerRadius: Mono.smallCorner, style: .continuous))
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1)
+            .animation(
+                AppMotion.resolved(AppMotion.quick, reduceMotion: reduceMotion),
+                value: configuration.isPressed
+            )
     }
 }
 
 struct MonoSecondaryButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 13, weight: .medium))
@@ -82,11 +92,17 @@ struct MonoSecondaryButtonStyle: ButtonStyle {
                 RoundedRectangle(cornerRadius: Mono.smallCorner, style: .continuous)
                     .stroke(Mono.line, lineWidth: 1)
             }
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.965 : 1)
+            .animation(
+                AppMotion.resolved(AppMotion.quick, reduceMotion: reduceMotion),
+                value: configuration.isPressed
+            )
     }
 }
 
 struct MonoIconButtonStyle: ButtonStyle {
     var size: CGFloat = 34
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -96,6 +112,12 @@ struct MonoIconButtonStyle: ButtonStyle {
             .background(configuration.isPressed ? Mono.fill : Color.clear)
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .contentShape(Rectangle())
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.9 : 1)
+            .rotationEffect(.degrees(configuration.isPressed && !reduceMotion ? -3 : 0))
+            .animation(
+                AppMotion.resolved(AppMotion.quick, reduceMotion: reduceMotion),
+                value: configuration.isPressed
+            )
     }
 }
 
@@ -129,9 +151,14 @@ struct MonoBadge: View {
 
 struct MonoToggle: View {
     @Binding var isOn: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        Button { isOn.toggle() } label: {
+        Button {
+            withAnimation(AppMotion.resolved(AppMotion.selection, reduceMotion: reduceMotion)) {
+                isOn.toggle()
+            }
+        } label: {
             ZStack(alignment: isOn ? .trailing : .leading) {
                 Capsule()
                     .fill(isOn ? Mono.inverse : Mono.fill)
@@ -142,8 +169,9 @@ struct MonoToggle: View {
                     .padding(3)
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(MotionPlainButtonStyle())
         .accessibilityValue(isOn ? "On" : "Off")
+        .motionAnimate(value: isOn, animation: AppMotion.selection)
     }
 }
 

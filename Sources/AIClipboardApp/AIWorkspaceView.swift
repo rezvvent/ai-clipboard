@@ -36,8 +36,12 @@ struct AIWorkspaceView: View {
                 case .analytics: analytics
                 }
             }
+            .id(mode)
+            .transition(.opacity.combined(with: .move(edge: .bottom)))
         }
         .background(Mono.canvas)
+        .motionAnimate(value: mode, animation: AppMotion.expressive)
+        .motionAnimate(value: isThinking, animation: AppMotion.expressive)
         .onAppear { promptFocused = true }
         .onChange(of: model.languageCode) { languageCode in
             guard !messages.isEmpty, messages[0].role == .assistant else { return }
@@ -88,7 +92,7 @@ struct AIWorkspaceView: View {
 
     private func modeButton(_ value: Mode, title: LocalizedStringKey, symbol: String) -> some View {
         Button {
-            mode = value
+            withAnimation(AppMotion.selection) { mode = value }
         } label: {
             Label(title, systemImage: symbol)
                 .font(.system(size: 11, weight: .semibold))
@@ -98,7 +102,8 @@ struct AIWorkspaceView: View {
                 .background(mode == value ? Mono.inverse : Color.clear)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(MotionPlainButtonStyle())
+        .motionAnimate(value: mode == value, animation: AppMotion.selection)
     }
 
     private var chat: some View {
@@ -115,14 +120,18 @@ struct AIWorkspaceView: View {
                                 copy: { model.pasteController.copy($0, plainText: false) }
                             )
                             .id(message.id)
+                            .motionAppear(distance: 8)
                         }
                         if isThinking {
                             HStack(spacing: 7) {
-                                ProgressView().controlSize(.small)
+                                ProgressView()
+                                    .controlSize(.small)
+                                    .motionPulse()
                                 Text("ai.chat.thinking")
                                     .font(.system(size: 11))
                                     .foregroundStyle(Mono.tertiaryText)
                             }
+                            .transition(.opacity.combined(with: .scale(scale: 0.96)))
                         }
                     }
                     .padding(24)
@@ -157,6 +166,7 @@ struct AIWorkspaceView: View {
                 .padding(.horizontal, 18)
                 .frame(minHeight: 54)
                 .background(Mono.panel)
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
 
             MonoDivider()
@@ -190,6 +200,8 @@ struct AIWorkspaceView: View {
                         .overlay {
                             RoundedRectangle(cornerRadius: 12).stroke(Mono.line)
                         }
+                        .scaleEffect(promptFocused ? 1.004 : 1)
+                        .motionAnimate(value: promptFocused, animation: AppMotion.selection)
                     Button(action: submit) {
                         Image(systemName: "arrow.up")
                             .font(.system(size: 13, weight: .bold))
@@ -198,8 +210,9 @@ struct AIWorkspaceView: View {
                             .background(Mono.inverse)
                             .clipShape(RoundedRectangle(cornerRadius: 11))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(MotionPlainButtonStyle())
                     .disabled(prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isThinking)
+                    .motionAnimate(value: isThinking, animation: AppMotion.selection)
                 }
             }
             .padding(18)
@@ -367,7 +380,7 @@ struct AIWorkspaceView: View {
     }
 }
 
-private enum Mode {
+private enum Mode: Hashable {
     case chat, analytics
 }
 
@@ -433,6 +446,7 @@ private struct AIMessageView: View {
             if message.role == .assistant { Spacer(minLength: 24) }
         }
         .frame(maxWidth: .infinity)
+        .motionAppear(distance: 8)
     }
 
     private var sortedResults: [SearchResult] {
@@ -492,6 +506,8 @@ private struct AIResultRow: View {
         .overlay {
             RoundedRectangle(cornerRadius: 11).stroke(Mono.subtleLine)
         }
+        .motionHover(lift: 2, scale: 1.004)
+        .motionAppear(distance: 5)
     }
 }
 
@@ -515,6 +531,7 @@ private struct MetricCard: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .motionAppear(distance: 6)
     }
 }
 
@@ -576,5 +593,6 @@ private struct SmartCollection: View {
         .padding(11)
         .background(Mono.panelRaised)
         .clipShape(RoundedRectangle(cornerRadius: 10))
+        .motionHover(lift: 2, scale: 1.006)
     }
 }

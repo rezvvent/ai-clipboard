@@ -192,7 +192,7 @@ final class AppModel: ObservableObject {
     }
 
     func closeQuickSearch() {
-        quickSearchPanel?.close()
+        quickSearchPanel?.dismiss()
     }
 
     func showSettings() {

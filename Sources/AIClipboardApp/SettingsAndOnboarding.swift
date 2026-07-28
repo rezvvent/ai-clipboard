@@ -32,7 +32,7 @@ struct SettingsView: View {
                 VStack(spacing: 4) {
                     ForEach(visibleSections) { item in
                         Button {
-                            section = item
+                            withAnimation(AppMotion.selection) { section = item }
                         } label: {
                             HStack(spacing: 11) {
                                 Image(systemName: item.symbol).frame(width: 16)
@@ -47,7 +47,8 @@ struct SettingsView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                             .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(MotionPlainButtonStyle())
+                        .motionAnimate(value: section == item, animation: AppMotion.selection)
                     }
                 }
                 .padding(.horizontal, 10)
@@ -87,6 +88,8 @@ struct SettingsView: View {
                         case .data: dataContent
                         }
                     }
+                    .id(section)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
                     .padding(.horizontal, 26)
                     .padding(.bottom, 26)
                 }
@@ -94,6 +97,9 @@ struct SettingsView: View {
             .background(Mono.canvas)
         }
         .task { await load() }
+        .motionAnimate(value: section, animation: AppMotion.expressive)
+        .motionAnimate(value: excludedApps, animation: AppMotion.standard)
+        .motionAnimate(value: excludedDomains, animation: AppMotion.standard)
         .onReceive(accountStore.$session) { session in
             if session == nil && section == .subscription {
                 section = .account
@@ -511,6 +517,8 @@ struct AccountWindowView: View {
         }
         .environment(\.locale, Locale(identifier: model.languageCode))
         .preferredColorScheme(model.preferredColorScheme)
+        .motionAnimate(value: store.session?.id, animation: AppMotion.expressive)
+        .motionAnimate(value: store.isWorking, animation: AppMotion.selection)
     }
 }
 
@@ -566,6 +574,9 @@ private struct LaunchAtLoginSettingsRow: View {
             }
         }
         .onAppear { controller.refresh() }
+        .motionAnimate(value: controller.isEnabled, animation: AppMotion.selection)
+        .motionAnimate(value: controller.requiresApproval, animation: AppMotion.expressive)
+        .motionAnimate(value: controller.errorMessage, animation: AppMotion.expressive)
         .alert("startup.dialog.title", isPresented: $showEnableDialog) {
             Button("startup.dialog.enable") { controller.setEnabled(true) }
             Button("startup.openSettings") { controller.openSystemSettings() }
@@ -737,6 +748,7 @@ private struct SettingsCard<Content: View>: View {
                 }
             }
         }
+        .motionAppear(distance: 7)
     }
 }
 
@@ -870,6 +882,8 @@ struct OnboardingView: View {
                         .font(.system(size: 23, weight: .light))
                         .foregroundStyle(Mono.text)
                 }
+                .id(page)
+                .transition(.scale.combined(with: .opacity))
                 .padding(.bottom, 25)
 
                 Text(LocalizedStringKey(pages[page].title))
@@ -877,6 +891,8 @@ struct OnboardingView: View {
                     .foregroundStyle(Mono.text)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.bottom, 13)
+                    .id("title-\(page)")
+                    .transition(.opacity.combined(with: .move(edge: .trailing)))
 
                 Text(LocalizedStringKey(pages[page].detail))
                     .font(.system(size: 14))
@@ -884,12 +900,14 @@ struct OnboardingView: View {
                     .foregroundStyle(Mono.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: 410, alignment: .leading)
+                    .id("detail-\(page)")
+                    .transition(.opacity.combined(with: .move(edge: .trailing)))
 
                 Spacer()
 
                 HStack {
                     if page > 0 {
-                        Button("onboarding.back") { withAnimation(.easeOut(duration: 0.18)) { page -= 1 } }
+                        Button("onboarding.back") { withAnimation(AppMotion.expressive) { page -= 1 } }
                             .buttonStyle(MonoSecondaryButtonStyle())
                     }
                     Spacer()
@@ -897,7 +915,7 @@ struct OnboardingView: View {
                         if page == pages.count - 1 {
                             model.completeOnboarding()
                         } else {
-                            withAnimation(.easeOut(duration: 0.18)) { page += 1 }
+                            withAnimation(AppMotion.expressive) { page += 1 }
                         }
                     }
                     .buttonStyle(MonoPrimaryButtonStyle())
@@ -910,6 +928,7 @@ struct OnboardingView: View {
         .interactiveDismissDisabled()
         .environment(\.locale, Locale(identifier: model.languageCode))
         .preferredColorScheme(model.preferredColorScheme)
+        .motionAnimate(value: page, animation: AppMotion.expressive)
     }
 }
 
@@ -1022,6 +1041,7 @@ private struct AutorunInstruction: View {
                 .fixedSize(horizontal: false, vertical: true)
             Spacer()
         }
+        .motionAppear(distance: 6)
     }
 }
 
@@ -1057,7 +1077,8 @@ private struct SettingsChoiceRow: View {
                             .background(selected == option.value ? Mono.inverse : Color.clear)
                             .clipShape(RoundedRectangle(cornerRadius: 7))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(MotionPlainButtonStyle())
+                    .motionAnimate(value: selected == option.value, animation: AppMotion.selection)
                 }
             }
             .padding(3)
@@ -1112,6 +1133,7 @@ private struct AccountSettingsPane: View {
                         ) { mode = $0 }
                         if mode == "register" {
                             MonoAccountField(title: "account.name", text: $displayName)
+                                .transition(.opacity.combined(with: .move(edge: .top)))
                         }
                         MonoAccountField(title: "account.email", text: $email)
                         MonoAccountField(title: "account.password", text: $password, secure: true)
@@ -1120,6 +1142,7 @@ private struct AccountSettingsPane: View {
                                 .font(.system(size: 10))
                                 .foregroundStyle(Mono.secondaryText)
                                 .frame(maxWidth: .infinity, alignment: .leading)
+                                .transition(.opacity.combined(with: .move(edge: .top)))
                         }
                         HStack {
                             Button(mode == "register" ? "account.register" : "account.signin") {
@@ -1157,6 +1180,9 @@ private struct AccountSettingsPane: View {
                 }
             }
         }
+        .motionAnimate(value: mode, animation: AppMotion.expressive)
+        .motionAnimate(value: store.isWorking, animation: AppMotion.selection)
+        .motionAnimate(value: store.errorMessage, animation: AppMotion.expressive)
     }
 }
 

@@ -350,6 +350,59 @@ final class GlobalHotKey {
 }
 
 @MainActor
+private enum WindowMotion {
+    static func show(_ window: NSWindow) {
+        window.center()
+        guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else {
+            window.alphaValue = 1
+            window.makeKeyAndOrderFront(nil)
+            return
+        }
+
+        let targetFrame = window.frame
+        let startFrame = targetFrame
+            .insetBy(dx: 12, dy: 9)
+            .offsetBy(dx: 0, dy: -5)
+        window.alphaValue = 0
+        window.setFrame(startFrame, display: false)
+        window.makeKeyAndOrderFront(nil)
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.24
+            context.timingFunction = CAMediaTimingFunction(
+                controlPoints: 0.2,
+                0.75,
+                0.25,
+                1
+            )
+            window.animator().alphaValue = 1
+            window.animator().setFrame(targetFrame, display: true)
+        }
+    }
+
+    static func hide(_ window: NSWindow) {
+        guard window.isVisible else { return }
+        guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else {
+            window.orderOut(nil)
+            return
+        }
+        let originalFrame = window.frame
+        let endFrame = originalFrame
+            .insetBy(dx: 8, dy: 6)
+            .offsetBy(dx: 0, dy: -3)
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.16
+            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            window.animator().alphaValue = 0
+            window.animator().setFrame(endFrame, display: true)
+        } completionHandler: {
+            window.orderOut(nil)
+            window.alphaValue = 1
+            window.setFrame(originalFrame, display: false)
+        }
+    }
+}
+
+@MainActor
 final class QuickSearchPanelController: NSWindowController, NSWindowDelegate {
     init(model: AppModel) {
         let panel = KeyablePanel(
@@ -376,13 +429,17 @@ final class QuickSearchPanelController: NSWindowController, NSWindowDelegate {
 
     func show() {
         guard let window else { return }
-        window.center()
         NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
+        WindowMotion.show(window)
+    }
+
+    func dismiss() {
+        guard let window else { return }
+        WindowMotion.hide(window)
     }
 
     func windowDidResignKey(_ notification: Notification) {
-        close()
+        dismiss()
     }
 }
 
@@ -415,9 +472,13 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     func show() {
         guard let window else { return }
-        window.center()
         NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
+        WindowMotion.show(window)
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        WindowMotion.hide(sender)
+        return false
     }
 }
 
@@ -445,14 +506,18 @@ final class AccountWindowController: NSWindowController, NSWindowDelegate {
 
     func show() {
         guard let window else { return }
-        window.center()
         NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
+        WindowMotion.show(window)
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        WindowMotion.hide(sender)
+        return false
     }
 }
 
 @MainActor
-final class MainWindowController: NSWindowController {
+final class MainWindowController: NSWindowController, NSWindowDelegate {
     init(model: AppModel) {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1_140, height: 720),
@@ -467,14 +532,19 @@ final class MainWindowController: NSWindowController {
         window.minSize = NSSize(width: 1_020, height: 660)
         window.contentView = NSHostingView(rootView: MainWindowView(model: model))
         super.init(window: window)
+        window.delegate = self
     }
 
     required init?(coder: NSCoder) { nil }
 
     func show() {
         guard let window else { return }
-        window.center()
         NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
+        WindowMotion.show(window)
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        WindowMotion.hide(sender)
+        return false
     }
 }

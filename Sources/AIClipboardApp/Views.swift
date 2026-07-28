@@ -11,18 +11,22 @@ struct MainWindowView: View {
             LibrarySidebar(model: model)
                 .frame(width: Mono.sidebarWidth)
             MonoDivider().frame(width: 1)
-            if model.selectedSection == .ai {
-                AIWorkspaceView(model: model)
-                    .frame(minWidth: 720, maxWidth: .infinity)
-            } else {
-                ClipboardLibrary(model: model)
-                    .frame(minWidth: 360, idealWidth: Mono.libraryWidth, maxWidth: 500)
-                MonoDivider().frame(width: 1)
-                DetailPane(item: selectedItem, model: model)
-                    .frame(minWidth: 360, maxWidth: .infinity)
+            Group {
+                if model.selectedSection == .ai {
+                    AIWorkspaceView(model: model)
+                        .frame(minWidth: 720, maxWidth: .infinity)
+                        .transition(.opacity.combined(with: .move(edge: .trailing)))
+                } else {
+                    ClipboardLibrary(model: model)
+                        .frame(minWidth: 360, idealWidth: Mono.libraryWidth, maxWidth: 500)
+                    MonoDivider().frame(width: 1)
+                    DetailPane(item: selectedItem, model: model)
+                        .frame(minWidth: 360, maxWidth: .infinity)
+                }
             }
         }
         .background(Mono.canvas)
+        .motionAnimate(value: model.selectedSection, animation: AppMotion.expressive)
         .environment(\.locale, Locale(identifier: model.languageCode))
         .preferredColorScheme(model.preferredColorScheme)
         .alert("error.title", isPresented: Binding(
@@ -99,7 +103,8 @@ private struct LibrarySidebar: View {
                     .frame(height: 36)
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(MotionPlainButtonStyle())
+                .motionAnimate(value: model.isPaused, animation: AppMotion.selection)
 
                 Button {
                     model.showSettings()
@@ -115,7 +120,7 @@ private struct LibrarySidebar: View {
                     .frame(height: 36)
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(MotionPlainButtonStyle())
             }
             .padding(10)
         }
@@ -162,7 +167,8 @@ private struct AccountSidebarButton: View {
             .frame(height: 38)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(MotionPlainButtonStyle())
+        .motionAnimate(value: store.session?.id, animation: AppMotion.selection)
     }
 }
 
@@ -184,6 +190,7 @@ private struct BrandLockup: View {
                 .tracking(1.1)
                 .foregroundStyle(Mono.text)
         }
+        .motionAppear(distance: 6)
     }
 }
 
@@ -216,8 +223,11 @@ private struct SidebarButton: View {
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .onHover { hovering = $0 }
+        .buttonStyle(MotionPlainButtonStyle())
+        .onHover { value in
+            withAnimation(AppMotion.selection) { hovering = value }
+        }
+        .motionAnimate(value: selected, animation: AppMotion.selection)
     }
 }
 
@@ -260,6 +270,7 @@ private struct ClipboardLibrary: View {
                             ) {
                                 model.selectedItemID = result.id
                             }
+                            .motionAppear(distance: 7)
                             .contextMenu {
                                 Button("action.copy") { model.pasteController.copy(result.item, plainText: false) }
                                 Button("action.copyPlain") { model.pasteController.copy(result.item, plainText: true) }
@@ -280,6 +291,8 @@ private struct ClipboardLibrary: View {
             }
         }
         .background(Mono.canvas)
+        .motionAnimate(value: results.map(\.id), animation: AppMotion.standard)
+        .motionAnimate(value: model.selectedSection, animation: AppMotion.expressive)
     }
 
     private var results: [SearchResult] {
@@ -313,8 +326,9 @@ struct MonoSearchField: View {
                         .background(Mono.fill)
                         .clipShape(Circle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(MotionPlainButtonStyle())
                 .accessibilityLabel(Text("search.clear"))
+                .transition(.scale.combined(with: .opacity))
             }
         }
         .padding(.horizontal, large ? 18 : 12)
@@ -325,6 +339,10 @@ struct MonoSearchField: View {
             RoundedRectangle(cornerRadius: large ? 13 : 10, style: .continuous)
                 .stroke(focused ? Mono.text.opacity(0.48) : Mono.line, lineWidth: 1)
         }
+        .scaleEffect(focused ? 1.006 : 1)
+        .shadow(color: Color.black.opacity(focused ? 0.08 : 0), radius: 12, y: 5)
+        .motionAnimate(value: focused, animation: AppMotion.selection)
+        .motionAnimate(value: text.isEmpty, animation: AppMotion.quick)
         .onAppear {
             if large { DispatchQueue.main.async { focused = true } }
         }
@@ -394,9 +412,14 @@ private struct ClipboardCard: View {
                 }
             }
             .contentShape(Rectangle())
+            .scaleEffect(selected ? 1 : (hovering ? 1.008 : 0.995))
+            .offset(y: hovering && !selected ? -1 : 0)
         }
-        .buttonStyle(.plain)
-        .onHover { hovering = $0 }
+        .buttonStyle(MotionPlainButtonStyle())
+        .onHover { value in
+            withAnimation(AppMotion.selection) { hovering = value }
+        }
+        .motionAnimate(value: selected, animation: AppMotion.selection)
         .accessibilityElement(children: .combine)
     }
 
@@ -419,6 +442,7 @@ private struct DetailPane: View {
             if let item {
                 ItemDetailView(item: item, model: model)
                     .id(item.id)
+                    .transition(.opacity.combined(with: .move(edge: .trailing)))
             } else {
                 MinimalEmptyState(
                     title: "detail.empty",
@@ -428,6 +452,7 @@ private struct DetailPane: View {
             }
         }
         .background(Mono.panel)
+        .motionAnimate(value: item?.id, animation: AppMotion.expressive)
     }
 }
 
@@ -555,8 +580,12 @@ struct ItemDetailView: View {
                     }
                 }
                 .padding(24)
+                .motionAppear(distance: 8)
             }
         }
+        .motionAnimate(value: showProtected, animation: AppMotion.expressive)
+        .motionAnimate(value: item.isFavorite, animation: AppMotion.selection)
+        .motionAnimate(value: item.isPinned, animation: AppMotion.selection)
     }
 
     @ViewBuilder
@@ -620,7 +649,11 @@ struct ItemDetailView: View {
                 languageCode: model.languageCode
             )
         ) { success, _ in
-            if success { Task { @MainActor in showProtected = true } }
+            if success {
+                Task { @MainActor in
+                    withAnimation(AppMotion.expressive) { showProtected = true }
+                }
+            }
         }
     }
 
@@ -684,6 +717,7 @@ struct MinimalEmptyState: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(30)
+        .motionAppear(distance: 8)
     }
 }
 
@@ -716,12 +750,15 @@ struct QuickSearchView: View {
 
             if isThinking {
                 VStack(spacing: 12) {
-                    ProgressView().controlSize(.small)
+                    ProgressView()
+                        .controlSize(.small)
+                        .motionPulse()
                     Text("ai.chat.thinking")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(Mono.tertiaryText)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .transition(.opacity.combined(with: .scale(scale: 0.97)))
             } else if let answer, model.searchResults.isEmpty {
                 VStack(spacing: 13) {
                     Image(systemName: "sparkles")
@@ -736,6 +773,7 @@ struct QuickSearchView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(30)
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
             } else if model.searchResults.isEmpty {
                 MinimalEmptyState(
                     title: "ai.quick.title",
@@ -816,6 +854,8 @@ struct QuickSearchView: View {
         }
         .environment(\.locale, Locale(identifier: model.languageCode))
         .preferredColorScheme(model.preferredColorScheme)
+        .motionAnimate(value: isThinking, animation: AppMotion.expressive)
+        .motionAnimate(value: model.searchResults.map(\.id), animation: AppMotion.standard)
     }
 
     private func submitAI() {
@@ -883,7 +923,8 @@ private struct QuickResultRow: View {
             .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(MotionPlainButtonStyle())
+        .motionAnimate(value: selected, animation: AppMotion.selection)
         .simultaneousGesture(TapGesture(count: 2).onEnded(doubleAction))
     }
 }

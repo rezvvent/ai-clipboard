@@ -9,8 +9,14 @@ swift scripts/generate-app-icon.swift
 iconutil -c icns work/AppIcon.iconset -o Resources/AppIcon.icns
 
 if [[ "$configuration" == "release" ]]; then
-    swift build -c release --arch arm64 --arch x86_64
-    binary_dir="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)"
+    if [[ -d "/Applications/Xcode.app" ]]; then
+        swift build -c release --arch arm64 --arch x86_64
+        binary_dir="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)"
+    else
+        echo "Full Xcode is unavailable; building a native release for $(uname -m)."
+        swift build -c release
+        binary_dir="$(swift build -c release --show-bin-path)"
+    fi
 else
     swift build -c "$configuration"
     binary_dir="$(swift build -c "$configuration" --show-bin-path)"
