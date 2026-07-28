@@ -1,0 +1,15 @@
+.build/
+.swiftpm/
+DerivedData/
+*.xcuserstate
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.zip
+*.json
+!Package.resolved
+!Resources/**/*.json
+.DS_Store
+outputs/
+work/
+server/.env

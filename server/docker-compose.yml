@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: aiclipboard
+      POSTGRES_USER: aiclipboard
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-development-only}
+    volumes:
+      - aiclipboard-postgres:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aiclipboard"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://aiclipboard:local-development-only@postgres/aiclipboard}
+      JWT_SECRET: ${JWT_SECRET:-local-development-secret-change-before-deploying-64-bytes-minimum}
+      SERVER_DATA_KEY: ${SERVER_DATA_KEY:-YWktY2xpcGJvYXJkLWRldmVsb3BtZW50LWtleS0zMmI=}
+      ALLOW_INSECURE_HTTP: "true"
+      ENVIRONMENT: development
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash}
+      GEMINI_BASE_URL: ${GEMINI_BASE_URL:-https://generativelanguage.googleapis.com/v1beta}
+    ports:
+      - "8080:8080"
+
+volumes:
+  aiclipboard-postgres:

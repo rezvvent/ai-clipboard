@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: ai-clipboard-api
+    runtime: docker
+    rootDir: server
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    plan: starter
+    region: frankfurt
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ai-clipboard-postgres
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SERVER_DATA_SECRET
+        generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.5-flash
+      - key: ALLOW_INSECURE_HTTP
+        value: "false"
+      - key: ENVIRONMENT
+        value: production
+
+databases:
+  - name: ai-clipboard-postgres
+    plan: basic-256mb
+    region: frankfurt
+    databaseName: aiclipboard
+    user: aiclipboard
+    ipAllowList: []
