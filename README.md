@@ -29,6 +29,9 @@ This repository contains a working macOS 13+ app and its required encrypted sync
 - functional application picker and copied-URL domain exclusions;
 - clear active/paused capture status, timed pause controls, manual resume, and automatic status recovery.
 - a dedicated **AI Search** tab backed by the Gemini API, with localized Russian/English answers, result cards, analytics, and smart collections;
+- structured smart-search operators such as `type:sql`, `app:"DBeaver"`, `project:marketplace`, `copied:this_week`, `contains:postgres`, and `sensitive:false`;
+- quick non-destructive text actions in item details: clean formatting, plain text, list conversion, and link extraction;
+- automatic CSV/TSV profiling with inferred column types, missing values, duplicate rows, and potential PII markers;
 - protected items are hidden from every regular section and AI surface; opening the Protected section requires macOS device-owner authentication;
 - signing out or changing account immediately clears the process cache, and a sync session is accepted only for its matching account;
 - cross-device sync using the server account, encrypted image payloads, delta cursors, and deletion tombstones;

@@ -187,6 +187,9 @@ public struct SearchFilters: Codable, Hashable, Sendable {
     public var contentType: ClipboardContentType?
     public var pinnedOnly: Bool
     public var sensitiveOnly: Bool
+    public var sensitivity: Bool?
+    public var containsText: String?
+    public var projectName: String?
 
     public init(
         from: Date? = nil,
@@ -194,7 +197,10 @@ public struct SearchFilters: Codable, Hashable, Sendable {
         applicationName: String? = nil,
         contentType: ClipboardContentType? = nil,
         pinnedOnly: Bool = false,
-        sensitiveOnly: Bool = false
+        sensitiveOnly: Bool = false,
+        sensitivity: Bool? = nil,
+        containsText: String? = nil,
+        projectName: String? = nil
     ) {
         self.from = from
         self.to = to
@@ -202,6 +208,41 @@ public struct SearchFilters: Codable, Hashable, Sendable {
         self.contentType = contentType
         self.pinnedOnly = pinnedOnly
         self.sensitiveOnly = sensitiveOnly
+        self.sensitivity = sensitivity
+        self.containsText = containsText
+        self.projectName = projectName
+    }
+}
+
+public enum ExperienceMode: String, Codable, CaseIterable, Sendable {
+    case basic, work, development, analytics
+}
+
+public struct SourceContext: Codable, Hashable, Sendable {
+    public var applicationName: String?
+    public var windowTitle: String?
+    public var pageTitle: String?
+    public var sourceURL: String?
+    public var projectName: String?
+    public var deviceName: String?
+    public var language: String?
+
+    public init(
+        applicationName: String? = nil,
+        windowTitle: String? = nil,
+        pageTitle: String? = nil,
+        sourceURL: String? = nil,
+        projectName: String? = nil,
+        deviceName: String? = nil,
+        language: String? = nil
+    ) {
+        self.applicationName = applicationName
+        self.windowTitle = windowTitle
+        self.pageTitle = pageTitle
+        self.sourceURL = sourceURL
+        self.projectName = projectName
+        self.deviceName = deviceName
+        self.language = language
     }
 }
 

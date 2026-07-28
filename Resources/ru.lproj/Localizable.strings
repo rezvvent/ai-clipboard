@@ -333,3 +333,10 @@
 "sync.error.auth" = "Сеанс синхронизации истёк. Подключите хранилище заново.";
 "sync.error.server" = "Сервер синхронизации вернул ошибку.";
 "sync.error.required" = "Сервер недоступен: элемент временно остаётся только в RAM и будет отправлен при следующей синхронизации.";
+"intelligence.quickActions" = "Быстрые действия";
+"intelligence.clean" = "Очистить";
+"intelligence.plain" = "Обычный текст";
+"intelligence.list" = "Сделать список";
+"intelligence.urls" = "Извлечь ссылки";
+"intelligence.dataProfile" = "Профиль данных";
+"intelligence.duplicates" = "Повторяющихся строк: %d";

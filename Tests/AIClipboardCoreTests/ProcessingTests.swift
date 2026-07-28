@@ -46,6 +46,34 @@ final class ProcessingTests: XCTestCase {
         XCTAssertFalse(query.semanticQuery.lowercased().contains("вчера"))
     }
 
+    func testStructuredQueryOperators() {
+        let query = QueryParser().parse(
+            #"connection type:sql app:"DBeaver" project:marketplace copied:this_week sensitive:false contains:postgres"#
+        )
+        XCTAssertEqual(query.filters.contentType, .code)
+        XCTAssertEqual(query.filters.applicationName, "DBeaver")
+        XCTAssertEqual(query.filters.projectName, "marketplace")
+        XCTAssertEqual(query.filters.containsText, "postgres")
+        XCTAssertEqual(query.filters.sensitivity, false)
+        XCTAssertNotNil(query.filters.from)
+        XCTAssertFalse(query.semanticQuery.contains("type:"))
+    }
+
+    func testQuickTextActionsAndTabularProfiling() {
+        let transformer = QuickTextTransformer()
+        XCTAssertEqual(transformer.apply(.clean, to: " a   b "), "a b")
+        XCTAssertEqual(transformer.apply(.extractURLs, to: "Open https://example.com now"), "https://example.com")
+
+        let profile = TabularProfiler().profile(
+            "email,amount\none@example.com,10\none@example.com,10\n,20"
+        )
+        XCTAssertEqual(profile?.rowCount, 3)
+        XCTAssertEqual(profile?.columnCount, 2)
+        XCTAssertEqual(profile?.duplicateRowCount, 1)
+        XCTAssertEqual(profile?.columns.first?.isPotentialPII, true)
+        XCTAssertEqual(profile?.columns.first?.missingCount, 1)
+    }
+
     func testLocalEmbeddingIsStableAndBilingual() async throws {
         let provider = MultilingualLocalEmbeddingProvider()
         let russian = try await provider.embed("как зайти в базу внутри контейнера")

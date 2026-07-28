@@ -605,6 +605,18 @@ public actor SQLiteClipboardRepository: ClipboardRepository {
         }
         if filters.pinnedOnly { sql += " AND \(prefix)is_pinned = 1" }
         if filters.sensitiveOnly { sql += " AND \(prefix)is_sensitive = 1" }
+        if let sensitive = filters.sensitivity {
+            sql += " AND \(prefix)is_sensitive = ?"
+            values.append(.int(sensitive ? 1 : 0))
+        }
+        if let contains = filters.containsText {
+            sql += " AND (COALESCE(\(prefix)normalized_text, '') LIKE ? OR COALESCE(\(prefix)title, '') LIKE ? OR COALESCE(\(prefix)summary, '') LIKE ?)"
+            values.append(contentsOf: [.text("%\(contains)%"), .text("%\(contains)%"), .text("%\(contains)%")])
+        }
+        if let project = filters.projectName {
+            sql += " AND (COALESCE(\(prefix)source_window_title, '') LIKE ? OR COALESCE(\(prefix)tags_json, '') LIKE ?)"
+            values.append(contentsOf: [.text("%\(project)%"), .text("%\(project)%")])
+        }
     }
 
     private func columnText(_ statement: OpaquePointer, _ index: Int32) -> String? {

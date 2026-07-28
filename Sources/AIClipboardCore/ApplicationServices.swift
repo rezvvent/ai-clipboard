@@ -404,7 +404,10 @@ public actor SearchService {
             applicationName: explicit.applicationName ?? parsed.applicationName,
             contentType: explicit.contentType ?? parsed.contentType,
             pinnedOnly: explicit.pinnedOnly || parsed.pinnedOnly,
-            sensitiveOnly: explicit.sensitiveOnly || parsed.sensitiveOnly
+            sensitiveOnly: explicit.sensitiveOnly || parsed.sensitiveOnly,
+            sensitivity: explicit.sensitivity ?? parsed.sensitivity,
+            containsText: explicit.containsText ?? parsed.containsText,
+            projectName: explicit.projectName ?? parsed.projectName
         )
     }
 }

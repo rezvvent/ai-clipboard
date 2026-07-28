@@ -521,6 +521,13 @@ struct ItemDetailView: View {
 
                     detailContent
 
+                    if !item.isSensitive, let text = item.rawText ?? item.normalizedText, !text.isEmpty {
+                        quickActions(for: text)
+                        if let profile = TabularProfiler().profile(text) {
+                            dataProfile(profile)
+                        }
+                    }
+
                     VStack(alignment: .leading, spacing: 10) {
                         HStack(spacing: 10) {
                             Button {
@@ -586,6 +593,73 @@ struct ItemDetailView: View {
         .motionAnimate(value: showProtected, animation: AppMotion.expressive)
         .motionAnimate(value: item.isFavorite, animation: AppMotion.selection)
         .motionAnimate(value: item.isPinned, animation: AppMotion.selection)
+    }
+
+    private func quickActions(for text: String) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("intelligence.quickActions")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Mono.secondaryText)
+            HStack(spacing: 8) {
+                quickAction("intelligence.clean", action: .clean, text: text)
+                quickAction("intelligence.plain", action: .plainText, text: text)
+                quickAction("intelligence.list", action: .bulletList, text: text)
+                quickAction("intelligence.urls", action: .extractURLs, text: text)
+            }
+        }
+    }
+
+    private func quickAction(_ title: LocalizedStringKey, action: QuickTextAction, text: String) -> some View {
+        Button(title) {
+            let transformed = QuickTextTransformer().apply(action, to: text)
+            guard !transformed.isEmpty else { return }
+            let board = NSPasteboard.general
+            board.clearContents()
+            board.setString(transformed, forType: .string)
+        }
+        .buttonStyle(MonoSecondaryButtonStyle())
+    }
+
+    private func dataProfile(_ profile: TabularProfile) -> some View {
+        MonoCard {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Label("intelligence.dataProfile", systemImage: "tablecells")
+                        .font(.system(size: 12, weight: .semibold))
+                    Spacer()
+                    Text("\(profile.rowCount) × \(profile.columnCount)")
+                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .foregroundStyle(Mono.secondaryText)
+                }
+                MonoDivider()
+                ForEach(profile.columns.prefix(6), id: \.name) { column in
+                    HStack {
+                        Text(column.name).lineLimit(1)
+                        if column.isPotentialPII {
+                            Image(systemName: "person.crop.circle.badge.exclamationmark")
+                                .foregroundStyle(Mono.secondaryText)
+                        }
+                        Spacer()
+                        Text(column.type.rawValue.uppercased())
+                            .foregroundStyle(Mono.tertiaryText)
+                        Text("−\(column.missingCount)")
+                            .foregroundStyle(Mono.tertiaryText)
+                    }
+                    .font(.system(size: 11, design: .monospaced))
+                }
+                if profile.duplicateRowCount > 0 {
+                    Text(String(
+                        format: AppLocalization.string(
+                            "intelligence.duplicates",
+                            languageCode: model.languageCode
+                        ),
+                        profile.duplicateRowCount
+                    ))
+                    .font(.system(size: 11))
+                    .foregroundStyle(Mono.secondaryText)
+                }
+            }
+        }
     }
 
     @ViewBuilder

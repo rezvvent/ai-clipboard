@@ -159,6 +159,17 @@ public actor InMemoryClipboardRepository: ClipboardRepository {
             if let type = filters.contentType, item.contentType != type { return false }
             if filters.pinnedOnly, !item.isPinned { return false }
             if filters.sensitiveOnly, !item.isSensitive { return false }
+            if let sensitive = filters.sensitivity, item.isSensitive != sensitive { return false }
+            if let contains = filters.containsText {
+                let haystack = [item.rawText, item.normalizedText, item.title, item.summary]
+                    .compactMap { $0 }.joined(separator: "\n")
+                if !haystack.localizedCaseInsensitiveContains(contains) { return false }
+            }
+            if let project = filters.projectName {
+                let context = ([item.sourceWindowTitle] + item.tags.map(Optional.some))
+                    .compactMap { $0 }.joined(separator: " ")
+                if !context.localizedCaseInsensitiveContains(project) { return false }
+            }
             return true
         }
     }

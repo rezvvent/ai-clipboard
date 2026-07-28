@@ -333,3 +333,10 @@
 "sync.error.auth" = "The sync session expired. Connect the vault again.";
 "sync.error.server" = "The sync server returned an error.";
 "sync.error.required" = "The server is unavailable: the item remains in RAM and will be uploaded by the next sync.";
+"intelligence.quickActions" = "Quick actions";
+"intelligence.clean" = "Clean";
+"intelligence.plain" = "Plain text";
+"intelligence.list" = "Make list";
+"intelligence.urls" = "Extract links";
+"intelligence.dataProfile" = "Data profile";
+"intelligence.duplicates" = "%d duplicate rows";

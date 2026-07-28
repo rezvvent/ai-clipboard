@@ -8,6 +8,31 @@ public struct QueryParser: Sendable {
         var filters = SearchFilters()
         var semantic = input
 
+        let operators = parseOperators(input)
+        if let value = operators["type"], let type = contentType(value) {
+            filters.contentType = type
+        }
+        if let value = operators["app"] ?? operators["source"] {
+            filters.applicationName = value
+        }
+        if let value = operators["contains"] {
+            filters.containsText = value
+        }
+        if let value = operators["project"] {
+            filters.projectName = value
+        }
+        if let value = operators["sensitive"] {
+            filters.sensitivity = ["true", "yes", "1", "да"].contains(value.lowercased())
+        }
+        if let value = operators["copied"] ?? operators["date"] {
+            applyDate(value, filters: &filters, now: now, calendar: calendar)
+        }
+        semantic = semantic.replacingOccurrences(
+            of: #"\b(?:type|app|source|contains|project|sensitive|copied|date):(?:"[^"]+"|\S+)"#,
+            with: "",
+            options: [.regularExpression, .caseInsensitive]
+        )
+
         if lower.contains("вчера") || lower.contains("yesterday") {
             let startToday = calendar.startOfDay(for: now)
             filters.from = calendar.date(byAdding: .day, value: -1, to: startToday)
@@ -27,13 +52,13 @@ public struct QueryParser: Sendable {
             (.file, ["файл", "file"]),
             (.code, ["код", "code"])
         ]
-        for (type, terms) in typeTerms where terms.contains(where: lower.contains) {
+        for (type, terms) in typeTerms where filters.contentType == nil && terms.contains(where: lower.contains) {
             filters.contentType = type
             break
         }
 
         let applications = ["Chrome", "Safari", "Telegram", "Slack", "Xcode", "Terminal", "Finder"]
-        if let app = applications.first(where: { lower.contains($0.lowercased()) }) {
+        if filters.applicationName == nil, let app = applications.first(where: { lower.contains($0.lowercased()) }) {
             filters.applicationName = app
             semantic = semantic.replacingOccurrences(of: app, with: "", options: .caseInsensitive)
         }
@@ -44,6 +69,48 @@ public struct QueryParser: Sendable {
 
     private func removing(_ terms: [String], from text: String) -> String {
         terms.reduce(text) { $0.replacingOccurrences(of: $1, with: "", options: .caseInsensitive) }
+    }
+
+    private func parseOperators(_ input: String) -> [String: String] {
+        guard let regex = try? NSRegularExpression(
+            pattern: #"\b(type|app|source|contains|project|sensitive|copied|date):("[^"]+"|\S+)"#,
+            options: .caseInsensitive
+        ) else { return [:] }
+        let range = NSRange(input.startIndex..., in: input)
+        return regex.matches(in: input, range: range).reduce(into: [:]) { result, match in
+            guard let keyRange = Range(match.range(at: 1), in: input),
+                  let valueRange = Range(match.range(at: 2), in: input) else { return }
+            result[String(input[keyRange]).lowercased()] = String(input[valueRange])
+                .trimmingCharacters(in: CharacterSet(charactersIn: "\""))
+        }
+    }
+
+    private func contentType(_ value: String) -> ClipboardContentType? {
+        let aliases: [String: ClipboardContentType] = [
+            "text": .plainText, "текст": .plainText, "url": .url, "link": .url, "ссылка": .url,
+            "code": .code, "код": .code, "sql": .code, "command": .terminalCommand,
+            "команда": .terminalCommand, "json": .json, "xml": .xml, "markdown": .markdown,
+            "image": .image, "изображение": .image, "file": .file, "файл": .file,
+            "email": .emailAddress, "phone": .phoneNumber
+        ]
+        return aliases[value.lowercased()] ?? ClipboardContentType(rawValue: value)
+    }
+
+    private func applyDate(_ value: String, filters: inout SearchFilters, now: Date, calendar: Calendar) {
+        switch value.lowercased().replacingOccurrences(of: "-", with: "_") {
+        case "today", "сегодня":
+            filters.from = calendar.startOfDay(for: now)
+        case "yesterday", "вчера":
+            let today = calendar.startOfDay(for: now)
+            filters.from = calendar.date(byAdding: .day, value: -1, to: today)
+            filters.to = today
+        case "this_week", "week", "неделя":
+            filters.from = calendar.dateInterval(of: .weekOfYear, for: now)?.start
+        case "this_month", "month", "месяц":
+            filters.from = calendar.dateInterval(of: .month, for: now)?.start
+        default:
+            break
+        }
     }
 }
 
