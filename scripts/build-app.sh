@@ -5,6 +5,15 @@ project_dir="$(cd "$(dirname "$0")/.." && pwd)"
 configuration="${1:-release}"
 cd "$project_dir"
 
+if [[ "$configuration" == "release" ]]; then
+    api_url="$(/usr/libexec/PlistBuddy -c 'Print :AIClipboardAPIBaseURL' Resources/Info.plist 2>/dev/null || true)"
+    if [[ -z "$api_url" || "$api_url" == *"REPLACE"* || "$api_url" != https://* ]]; then
+        echo "Release blocked: Resources/Info.plist must contain the deployed HTTPS backend URL in AIClipboardAPIBaseURL." >&2
+        echo "Deploy server/render.yaml first, set the resulting https://... address, then rebuild." >&2
+        exit 2
+    fi
+fi
+
 swift scripts/generate-app-icon.swift
 iconutil -c icns work/AppIcon.iconset -o Resources/AppIcon.icns
 
