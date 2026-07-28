@@ -36,6 +36,11 @@ public struct ContentDetector: ContentDetecting {
         guard !trimmed.isEmpty else { return hasImage ? .image : .unknown }
 
         if isJSON(trimmed) { return .json }
+        if looksLikeContact(trimmed) { return .contact }
+        if looksLikeDelimitedTable(trimmed) {
+            return trimmed.contains(",") ? .csv : .table
+        }
+        if looksLikeYAML(trimmed) { return .yaml }
         if trimmed.hasPrefix("<"), trimmed.hasSuffix(">"),
            trimmed.range(of: #"^<([A-Za-z_][\w:.-]*)(\s[^>]*)?>[\s\S]*</\1>$"#, options: .regularExpression) != nil {
             return .xml
@@ -43,7 +48,11 @@ public struct ContentDetector: ContentDetecting {
         if let url = URL(string: trimmed), url.scheme != nil, url.host != nil { return .url }
         if matches(trimmed, #"^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$"#) { return .emailAddress }
         if matches(trimmed, #"^\+?[\d\s().-]{7,20}$"#), trimmed.filter(\.isNumber).count >= 7 { return .phoneNumber }
+        if matches(trimmed, #"(?i)^(?:\d{4}-\d{2}-\d{2}|\d{2}[./-]\d{2}[./-]\d{4})(?:[ T]\d{2}:\d{2}(?::\d{2})?)?$"#) { return .date }
+        if matches(trimmed, #"(?i)\b(?:IBAN|БИК|ИНН|КПП|корр\.?\s*сч|расч[её]тн(?:ый|ого)\s+сч[её]т)\b"#) { return .bankDetails }
         if matches(trimmed, #"^(#[0-9A-F]{3,8}|rgba?\([^)]+\)|hsla?\([^)]+\))$"#) { return .color }
+        if matches(trimmed, #"^(?:=|\\\(|\\\[|\$\$).*(?:[+\-*/^=]|\\frac|\\sum|\\int).*$"#) { return .formula }
+        if looksLikeAddress(trimmed) { return .address }
 
         let lower = trimmed.lowercased()
         if commandPrefixes.contains(where: { lower.hasPrefix($0) }) || lower.hasPrefix("$ ") { return .terminalCommand }
@@ -78,6 +87,33 @@ public struct ContentDetector: ContentDetecting {
 
     private func looksLikeMarkdown(_ text: String) -> Bool {
         matches(text, #"(?m)^(#{1,6}\s|[-*]\s|\d+\.\s|>\s|```)"#)
+    }
+
+    private func looksLikeContact(_ text: String) -> Bool {
+        let hasEmail = matches(text, #"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b"#)
+        let hasPhone = matches(text, #"\+?[\d\s().-]{7,20}"#)
+        return text.contains("\n") && hasEmail && hasPhone
+    }
+
+    private func looksLikeDelimitedTable(_ text: String) -> Bool {
+        let lines = text.split(whereSeparator: \.isNewline).map(String.init)
+        guard lines.count > 1 else { return false }
+        for delimiter: Character in [",", "\t", ";"] {
+            let counts = lines.map { $0.filter { $0 == delimiter }.count }
+            if let first = counts.first, first > 0, counts.allSatisfy({ $0 == first }) { return true }
+        }
+        return false
+    }
+
+    private func looksLikeYAML(_ text: String) -> Bool {
+        guard text.contains("\n"), !text.contains("{") else { return false }
+        return matches(text, #"(?m)^[A-Za-z_][\w.-]*:\s*(?:.+)?$"#)
+            && matches(text, #"(?m)^(?:\s{2,}|\-\s+)[A-Za-z0-9]"#)
+    }
+
+    private func looksLikeAddress(_ text: String) -> Bool {
+        matches(text, #"(?i)\b(?:ул(?:ица)?|проспект|пр-т|пер(?:еулок)?|дом|д\.|кв\.|street|avenue|road)\b"#)
+            && matches(text, #"\d+"#)
     }
 }
 

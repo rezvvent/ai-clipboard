@@ -16,6 +16,10 @@ struct MainWindowView: View {
                     AIWorkspaceView(model: model)
                         .frame(minWidth: 720, maxWidth: .infinity)
                         .transition(.opacity.combined(with: .move(edge: .trailing)))
+                } else if [.workspaces, .automation, .dataLab].contains(model.selectedSection) {
+                    ProductStudioView(model: model, section: model.selectedSection)
+                        .frame(minWidth: 720, maxWidth: .infinity)
+                        .transition(.opacity.combined(with: .move(edge: .trailing)))
                 } else {
                     ClipboardLibrary(model: model)
                         .frame(minWidth: 360, idealWidth: Mono.libraryWidth, maxWidth: 500)
@@ -66,7 +70,7 @@ private struct LibrarySidebar: View {
                 .padding(.bottom, 8)
 
             VStack(spacing: 3) {
-                ForEach(LibrarySection.allCases.filter { $0 != .trash }) { section in
+                ForEach(model.visibleSections.filter { $0 != .trash }) { section in
                     SidebarButton(
                         section: section,
                         selected: model.selectedSection == section,
@@ -128,7 +132,7 @@ private struct LibrarySidebar: View {
     }
 
     private func count(for section: LibrarySection) -> Int? {
-        guard section != .ai else { return nil }
+        guard ![.ai, .workspaces, .automation, .dataLab].contains(section) else { return nil }
         return model.items.filter { model.matches($0, section: section) }.count
     }
 }
@@ -460,6 +464,8 @@ struct ItemDetailView: View {
     let item: ClipboardItem
     @ObservedObject var model: AppModel
     @State private var showProtected = false
+    @State private var aiResult: String?
+    @State private var aiWorking = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -523,6 +529,24 @@ struct ItemDetailView: View {
 
                     if !item.isSensitive, let text = item.rawText ?? item.normalizedText, !text.isEmpty {
                         quickActions(for: text)
+                        if let aiResult {
+                            MonoCard {
+                                VStack(alignment: .leading, spacing: 10) {
+                                    HStack {
+                                        Label("intelligence.aiResult", systemImage: "sparkles")
+                                            .font(.system(size: 12, weight: .semibold))
+                                        Spacer()
+                                        Button("action.copy") { copyText(aiResult) }
+                                            .buttonStyle(MonoSecondaryButtonStyle())
+                                    }
+                                    Text(aiResult)
+                                        .font(.system(size: 12))
+                                        .lineSpacing(4)
+                                        .textSelection(.enabled)
+                                }
+                            }
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
                         if let profile = TabularProfiler().profile(text) {
                             dataProfile(profile)
                         }
@@ -606,7 +630,42 @@ struct ItemDetailView: View {
                 quickAction("intelligence.list", action: .bulletList, text: text)
                 quickAction("intelligence.urls", action: .extractURLs, text: text)
             }
+            HStack(spacing: 8) {
+                aiAction("intelligence.correct", action: "correct", text: text)
+                aiAction("intelligence.polite", action: "polite", text: text)
+                aiAction("intelligence.translate", action: "translate", text: text)
+                aiAction("intelligence.explain", action: "explain", text: text)
+            }
+            .disabled(aiWorking)
         }
+    }
+
+    private func aiAction(_ title: LocalizedStringKey, action: String, text: String) -> some View {
+        Button(title) {
+            aiWorking = true
+            Task {
+                do {
+                    aiResult = try await model.syncCoordinator.transform(
+                        text: text,
+                        action: action,
+                        locale: model.languageCode
+                    )
+                } catch {
+                    model.errorMessage = AppLocalization.string(
+                        "ai.error.storageNotConnected",
+                        languageCode: model.languageCode
+                    )
+                }
+                aiWorking = false
+            }
+        }
+        .buttonStyle(MonoSecondaryButtonStyle())
+    }
+
+    private func copyText(_ text: String) {
+        let board = NSPasteboard.general
+        board.clearContents()
+        board.setString(text, forType: .string)
     }
 
     private func quickAction(_ title: LocalizedStringKey, action: QuickTextAction, text: String) -> some View {
@@ -704,7 +763,7 @@ struct ItemDetailView: View {
         } else {
             MonoCard {
                 Text(item.rawText ?? item.fileReferences.map(\.path).joined(separator: "\n"))
-                    .font(item.contentType == .code || item.contentType == .terminalCommand
+                    .font([.code, .terminalCommand, .json, .xml, .yaml, .csv, .table].contains(item.contentType)
                         ? .system(size: 12, design: .monospaced)
                         : .system(size: 14))
                     .lineSpacing(4)

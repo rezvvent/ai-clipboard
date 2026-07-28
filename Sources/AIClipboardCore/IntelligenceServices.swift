@@ -49,6 +49,19 @@ public struct TabularColumnProfile: Codable, Hashable, Sendable {
     public var missingCount: Int
     public var uniqueCount: Int
     public var isPotentialPII: Bool
+    public var numeric: NumericColumnProfile?
+}
+
+public struct NumericColumnProfile: Codable, Hashable, Sendable {
+    public var minimum: Double
+    public var maximum: Double
+    public var mean: Double
+    public var median: Double
+    public var standardDeviation: Double
+    public var firstQuartile: Double
+    public var thirdQuartile: Double
+    public var outlierCount: Int
+    public var negativeCount: Int
 }
 
 public struct TabularProfile: Codable, Hashable, Sendable {
@@ -78,7 +91,8 @@ public struct TabularProfiler: Sendable {
                 type: inferType(values),
                 missingCount: values.filter(\.isEmpty).count,
                 uniqueCount: Set(values.filter { !$0.isEmpty }).count,
-                isPotentialPII: isPII(name: header[index], values: values)
+                isPotentialPII: isPII(name: header[index], values: values),
+                numeric: numericProfile(values)
             )
         }
         return TabularProfile(
@@ -121,5 +135,38 @@ public struct TabularProfiler: Sendable {
         return values.contains {
             $0.range(of: #"^[^@\s]+@[^@\s]+\.[^@\s]+$"#, options: .regularExpression) != nil
         }
+    }
+
+    private func numericProfile(_ values: [String]) -> NumericColumnProfile? {
+        let numbers = values.compactMap { Double($0.replacingOccurrences(of: ",", with: ".")) }.sorted()
+        guard !numbers.isEmpty, numbers.count == values.filter({ !$0.isEmpty }).count else { return nil }
+        let mean = numbers.reduce(0, +) / Double(numbers.count)
+        let variance = numbers.reduce(0) { $0 + pow($1 - mean, 2) } / Double(numbers.count)
+        let median = percentile(numbers, 0.5)
+        let q1 = percentile(numbers, 0.25)
+        let q3 = percentile(numbers, 0.75)
+        let iqr = q3 - q1
+        let lower = q1 - 1.5 * iqr
+        let upper = q3 + 1.5 * iqr
+        return NumericColumnProfile(
+            minimum: numbers.first ?? 0,
+            maximum: numbers.last ?? 0,
+            mean: mean,
+            median: median,
+            standardDeviation: sqrt(variance),
+            firstQuartile: q1,
+            thirdQuartile: q3,
+            outlierCount: numbers.filter { $0 < lower || $0 > upper }.count,
+            negativeCount: numbers.filter { $0 < 0 }.count
+        )
+    }
+
+    private func percentile(_ values: [Double], _ fraction: Double) -> Double {
+        guard values.count > 1 else { return values.first ?? 0 }
+        let position = fraction * Double(values.count - 1)
+        let lower = Int(position.rounded(.down))
+        let upper = Int(position.rounded(.up))
+        if lower == upper { return values[lower] }
+        return values[lower] + (values[upper] - values[lower]) * (position - Double(lower))
     }
 }

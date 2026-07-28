@@ -19,6 +19,7 @@ public actor PrivacySettings: PrivacyChecking {
         public var accountPromptShown: Bool?
         public var duplicateRepairVersion: Int?
         public var autorunPromptVersion: Int?
+        public var experienceMode: ExperienceMode?
 
         public init() {}
     }
@@ -108,6 +109,11 @@ public actor PrivacySettings: PrivacyChecking {
 
     public func setLanguageCode(_ value: String) throws {
         snapshot.languageCode = value
+        try persist()
+    }
+
+    public func setExperienceMode(_ value: ExperienceMode) throws {
+        snapshot.experienceMode = value
         try persist()
     }
 
@@ -337,8 +343,10 @@ private extension ClipboardContentType {
         case .plainText, .richText, .url, .code, .terminalCommand, .emailAddress,
              .phoneNumber, .address, .color, .json, .xml, .markdown:
             true
-        case .image, .file, .fileList, .unknown:
+        case .image, .screenshot, .file, .folder, .fileList, .unknown:
             false
+        case .contact, .date, .bankDetails, .formula, .yaml, .csv, .table:
+            true
         }
     }
 }

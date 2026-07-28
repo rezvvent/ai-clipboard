@@ -2,7 +2,9 @@ import Foundation
 
 public enum ClipboardContentType: String, Codable, CaseIterable, Sendable {
     case plainText, richText, url, code, terminalCommand, emailAddress, phoneNumber
-    case address, color, json, xml, markdown, image, file, fileList, unknown
+    case contact, address, date, bankDetails, color, formula
+    case json, xml, yaml, markdown, csv, table
+    case image, screenshot, file, folder, fileList, unknown
 
     public var displayName: String {
         switch self {
@@ -13,13 +15,22 @@ public enum ClipboardContentType: String, Codable, CaseIterable, Sendable {
         case .terminalCommand: "Command"
         case .emailAddress: "Email"
         case .phoneNumber: "Phone"
+        case .contact: "Contact"
         case .address: "Address"
+        case .date: "Date"
+        case .bankDetails: "Bank details"
         case .color: "Color"
+        case .formula: "Formula"
         case .json: "JSON"
         case .xml: "XML"
+        case .yaml: "YAML"
         case .markdown: "Markdown"
+        case .csv: "CSV"
+        case .table: "Table"
         case .image: "Image"
+        case .screenshot: "Screenshot"
         case .file: "File"
+        case .folder: "Folder"
         case .fileList: "Files"
         case .unknown: "Other"
         }

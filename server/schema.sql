@@ -54,5 +54,19 @@ CREATE TABLE IF NOT EXISTS server_changes (
 CREATE INDEX IF NOT EXISTS server_changes_user_cursor_idx
     ON server_changes(user_id, cursor);
 
+CREATE TABLE IF NOT EXISTS user_resources (
+    user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    resource_id uuid NOT NULL,
+    kind varchar(40) NOT NULL,
+    name varchar(200) NOT NULL,
+    revision bigint NOT NULL DEFAULT 1,
+    ciphertext bytea NOT NULL CHECK (octet_length(ciphertext) >= 28),
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, resource_id)
+);
+CREATE INDEX IF NOT EXISTS user_resources_user_kind_idx
+    ON user_resources(user_id, kind, updated_at DESC);
+
 -- Retain change rows only as long as clients may be offline. A scheduled job can
 -- compact old rows after every active device has advanced beyond their cursor.

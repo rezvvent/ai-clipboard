@@ -54,6 +54,7 @@ final class AppModel: ObservableObject {
     @Published var selectedSection: LibrarySection = .all
     @Published var appearanceMode = "system"
     @Published var languageCode = Locale.current.language.languageCode?.identifier == "ru" ? "ru" : "en"
+    @Published var experienceMode: ExperienceMode = .basic
     @Published var hotKeyKeyCode = UInt32(kVK_ANSI_V)
     @Published var hotKeyModifiers = UInt32(cmdKey | shiftKey)
     @Published var hotKeyDisplay = "⌘⇧V"
@@ -156,6 +157,7 @@ final class AppModel: ObservableObject {
             onboardingCompleted = isSnapshotRun ? true : settings.onboardingCompleted
             appearanceMode = settings.appearanceMode ?? "system"
             languageCode = settings.languageCode ?? languageCode
+            experienceMode = settings.experienceMode ?? .basic
             let configuredKeyCode = settings.hotKeyKeyCode ?? UInt32(kVK_ANSI_V)
             let configuredModifiers = settings.hotKeyModifiers ?? UInt32(cmdKey | shiftKey)
             let configuredDisplay = settings.hotKeyDisplay ?? "⌘⇧V"
@@ -387,6 +389,26 @@ final class AppModel: ObservableObject {
         Task { try? await privacy.setLanguageCode(value) }
     }
 
+    func setExperienceMode(_ value: String) {
+        guard let mode = ExperienceMode(rawValue: value) else { return }
+        experienceMode = mode
+        if !visibleSections.contains(selectedSection) {
+            selectSection(.all)
+        }
+        Task { try? await privacy.setExperienceMode(mode) }
+    }
+
+    var visibleSections: [LibrarySection] {
+        LibrarySection.allCases.filter { section in
+            switch section {
+            case .workspaces: experienceMode != .basic
+            case .automation: experienceMode != .basic
+            case .dataLab: experienceMode == .analytics
+            default: true
+            }
+        }
+    }
+
     func updateHotKey(keyCode: UInt32, modifiers: UInt32, display: String) {
         installHotKey(keyCode: keyCode, modifiers: modifiers, display: display, persist: true)
     }
@@ -516,16 +538,17 @@ final class AppModel: ObservableObject {
             return false
         }
         return switch section {
-        case .ai: false
+        case .ai, .workspaces, .automation, .dataLab: false
         case .all, .recent: true
         case .pinned: item.isPinned
         case .favorites: item.isFavorite
-        case .text: item.contentType == .plainText || item.contentType == .richText
+        case .text:
+            [.plainText, .richText, .contact, .address, .date, .bankDetails, .formula].contains(item.contentType)
         case .links: item.contentType == .url
         case .code:
-            [.code, .terminalCommand, .json, .xml, .markdown].contains(item.contentType)
-        case .images: item.contentType == .image
-        case .files: item.contentType == .file || item.contentType == .fileList
+            [.code, .terminalCommand, .json, .xml, .yaml, .markdown, .csv, .table].contains(item.contentType)
+        case .images: item.contentType == .image || item.contentType == .screenshot
+        case .files: [.file, .folder, .fileList].contains(item.contentType)
         case .protected: item.isSensitive
         case .trash: false
         }
@@ -592,9 +615,10 @@ final class AppModel: ObservableObject {
     private func isTextualContent(_ type: ClipboardContentType) -> Bool {
         switch type {
         case .plainText, .richText, .url, .code, .terminalCommand, .emailAddress,
-             .phoneNumber, .address, .color, .json, .xml, .markdown:
+             .phoneNumber, .contact, .address, .date, .bankDetails, .color, .formula,
+             .json, .xml, .yaml, .markdown, .csv, .table:
             true
-        case .image, .file, .fileList, .unknown:
+        case .image, .screenshot, .file, .folder, .fileList, .unknown:
             false
         }
     }
@@ -777,12 +801,16 @@ final class AppModel: ObservableObject {
 }
 
 enum LibrarySection: String, CaseIterable, Identifiable {
-    case ai, all, recent, pinned, favorites, text, links, code, images, files, protected, trash
+    case ai, all, recent, pinned, favorites, text, links, code, images, files
+    case workspaces, automation, dataLab, protected, trash
     var id: Self { self }
     var localizationKey: String { "sidebar.\(rawValue)" }
     var symbol: String {
         switch self {
         case .ai: "sparkles"
+        case .workspaces: "square.grid.2x2"
+        case .automation: "point.3.connected.trianglepath.dotted"
+        case .dataLab: "chart.xyaxis.line"
         case .all: "square.stack.3d.up"
         case .recent: "clock"
         case .pinned: "pin"

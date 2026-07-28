@@ -4,6 +4,7 @@ import Carbon
 import Foundation
 import ServiceManagement
 import SwiftUI
+import Vision
 
 enum ImageCanonicalizer {
     static func canonicalPNG(from data: Data) -> Data? {
@@ -55,6 +56,33 @@ enum PasteboardCaptureResolver {
         }
         // Browsers often attach a favicon or preview image after the URL/text.
         return !hasText || firstRelevant.map(imageTypes.contains) == true
+    }
+}
+
+enum ScreenshotOCR {
+    static func recognize(in data: Data, languages: [String] = ["ru-RU", "en-US"]) async -> String? {
+        guard let image = NSImage(data: data) else { return nil }
+        var rect = NSRect(origin: .zero, size: image.size)
+        guard let cgImage = image.cgImage(forProposedRect: &rect, context: nil, hints: nil) else { return nil }
+        return await withCheckedContinuation { continuation in
+            let request = VNRecognizeTextRequest { request, _ in
+                let text = (request.results as? [VNRecognizedTextObservation])?
+                    .compactMap { $0.topCandidates(1).first?.string }
+                    .joined(separator: "\n")
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                continuation.resume(returning: text?.isEmpty == false ? text : nil)
+            }
+            request.recognitionLevel = .accurate
+            request.recognitionLanguages = languages
+            request.usesLanguageCorrection = true
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    try VNImageRequestHandler(cgImage: cgImage).perform([request])
+                } catch {
+                    continuation.resume(returning: nil)
+                }
+            }
+        }
     }
 }
 
@@ -236,14 +264,20 @@ final class ClipboardMonitor {
         let plainText = board.string(forType: .string)
         let richText = board.data(forType: .rtf)
         let rawImage = preferredImageData(from: board, hasText: plainText != nil)
-        let content = CapturedContent(
-            plainText: rawImage == nil ? plainText : nil,
-            richText: rawImage == nil ? richText : nil,
-            imageData: rawImage.flatMap(ImageCanonicalizer.canonicalPNG) ?? rawImage,
-            fileReferences: files,
-            sourceApplication: source
-        )
         Task {
+            let canonicalImage = rawImage.flatMap(ImageCanonicalizer.canonicalPNG) ?? rawImage
+            let recognizedText = if let canonicalImage {
+                await ScreenshotOCR.recognize(in: canonicalImage)
+            } else {
+                Optional<String>.none
+            }
+            let content = CapturedContent(
+                plainText: canonicalImage == nil ? plainText : recognizedText,
+                richText: canonicalImage == nil ? richText : nil,
+                imageData: canonicalImage,
+                fileReferences: files,
+                sourceApplication: source
+            )
             let outcome = await pipeline.process(content)
             if outcome.disposition == .stored || outcome.disposition == .deduplicated {
                 onProcessedChange?(outcome)

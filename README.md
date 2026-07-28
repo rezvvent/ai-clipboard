@@ -32,6 +32,16 @@ This repository contains a working macOS 13+ app and its required encrypted sync
 - structured smart-search operators such as `type:sql`, `app:"DBeaver"`, `project:marketplace`, `copied:this_week`, `contains:postgres`, and `sensitive:false`;
 - quick non-destructive text actions in item details: clean formatting, plain text, list conversion, and link extraction;
 - automatic CSV/TSV profiling with inferred column types, missing values, duplicate rows, and potential PII markers;
+- Basic, Work, Development, and Analytics interface modes with progressive module disclosure;
+- server-backed encrypted Knowledge Workspaces and shared business-term models;
+- Automation Studio with executable, reproducible CSV pipelines and a built-in recipe library;
+- Data Lab with statistics, quartiles, outliers, validation, dataset comparison, join suggestions, schema generation, and format conversion;
+- SQL Copilot safety analysis, formatting, table dependency extraction, and pandas conversion;
+- context-aware conversion to Markdown, HTML, spreadsheets, JSON, SQL values, terminal quoting, LaTeX, Jira, and Confluence;
+- Vision OCR for copied screenshots, making recognized text searchable without a local history database;
+- server Gemini transformations for correction, polite rewriting, translation, explanation, replies, extraction, summaries, and analytical insights;
+- encrypted server resources for workspaces, pipelines, automations, team spaces, lineage, recipes, connections, integrations, and business terms;
+- authenticated developer endpoints for history, item ingestion, transformations, workspaces, resources, and pipeline execution;
 - protected items are hidden from every regular section and AI surface; opening the Protected section requires macOS device-owner authentication;
 - signing out or changing account immediately clears the process cache, and a sync session is accepted only for its matching account;
 - cross-device sync using the server account, encrypted image payloads, delta cursors, and deletion tombstones;

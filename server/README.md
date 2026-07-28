@@ -7,6 +7,21 @@ payload at rest with AES-256-GCM using `SERVER_DATA_KEY` or a derived key from
 authenticated AI endpoint that calls Google Gemini;
 the Gemini API key never reaches a desktop client.
 
+The same account boundary also stores encrypted product resources: workspaces,
+pipelines, automation rules, team spaces, lineage, recipes, connections,
+integrations, and business terms. Developer endpoints include:
+
+```text
+GET  /clipboard/history
+POST /clipboard/items
+POST /v1/transform
+POST /v1/ai/transform
+POST /v1/pipelines/run
+GET  /v1/workspaces
+GET  /v1/resources
+PUT  /v1/resources/{id}
+```
+
 ## Local development
 
 ```bash

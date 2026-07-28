@@ -164,6 +164,18 @@ struct SettingsView: View {
                     selected: model.languageCode,
                     action: model.setLanguageCode
                 )
+                MonoDivider()
+                SettingsChoiceRow(
+                    title: "settings.mode",
+                    options: [
+                        ("basic", "settings.mode.basic"),
+                        ("work", "settings.mode.work"),
+                        ("development", "settings.mode.development"),
+                        ("analytics", "settings.mode.analytics")
+                    ],
+                    selected: model.experienceMode.rawValue,
+                    action: model.setExperienceMode
+                )
             }
 
         }

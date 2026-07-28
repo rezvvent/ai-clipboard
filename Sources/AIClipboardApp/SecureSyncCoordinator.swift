@@ -123,12 +123,41 @@ final class SecureSyncCoordinator: ObservableObject {
         }
     }
 
+    private struct AITransformRequest: Encodable {
+        var text: String
+        var action: String
+        var locale: String
+    }
+
+    private struct AITransformResponse: Decodable {
+        var result: String
+        var model: String
+    }
+
     private struct AIStatusResponse: Decodable {
         var available: Bool
         var model: String
         var provider: String?
         var detail: String
     }
+
+    private struct ResourceWrite: Encodable {
+        var id: UUID
+        var kind: String
+        var name: String
+        var revision: Int64
+        var data: [String: String]
+    }
+
+    private struct ResourceRead: Decodable {
+        var id: UUID
+        var kind: String
+        var name: String
+        var revision: Int64
+        var data: [String: String]
+    }
+
+    private struct EmptyBody: Encodable {}
 
     private struct ErrorResponse: Decodable {
         var detail: String
@@ -172,6 +201,47 @@ final class SecureSyncCoordinator: ObservableObject {
 
     var usesManagedEndpoint: Bool {
         !Self.managedEndpoint.isEmpty
+    }
+
+    func loadWorkspaces() async throws -> [KnowledgeWorkspace] {
+        let resources: [ResourceRead] = try await authorized(
+            path: "/v1/workspaces",
+            method: "GET",
+            body: Optional<EmptyBody>.none
+        )
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .millisecondsSince1970
+        return resources.compactMap { resource in
+            guard let encoded = resource.data["payload"],
+                  let data = Data(base64Encoded: encoded) else { return nil }
+            return try? decoder.decode(KnowledgeWorkspace.self, from: data)
+        }
+    }
+
+    func saveWorkspace(_ workspace: KnowledgeWorkspace) async throws {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .millisecondsSince1970
+        let body = ResourceWrite(
+            id: workspace.id,
+            kind: "workspace",
+            name: workspace.name,
+            revision: max(1, Int64(workspace.updatedAt.timeIntervalSince1970 * 1_000)),
+            data: ["payload": try encoder.encode(workspace).base64EncodedString()]
+        )
+        let _: ResourceRead = try await authorized(
+            path: "/v1/resources/\(workspace.id.uuidString)",
+            method: "PUT",
+            body: body
+        )
+    }
+
+    func transform(text: String, action: String, locale: String) async throws -> String {
+        let response: AITransformResponse = try await authorized(
+            path: "/v1/ai/transform",
+            method: "POST",
+            body: AITransformRequest(text: text, action: action, locale: locale)
+        )
+        return response.result
     }
 
     func activateAccount(email: String?) {

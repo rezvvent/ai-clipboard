@@ -32,7 +32,8 @@ let package = Package(
                 .linkedFramework("AuthenticationServices"),
                 .linkedFramework("Carbon"),
                 .linkedFramework("ServiceManagement"),
-                .linkedFramework("StoreKit")
+                .linkedFramework("StoreKit"),
+                .linkedFramework("Vision")
             ]
         ),
         .testTarget(
